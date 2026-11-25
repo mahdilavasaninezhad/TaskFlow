@@ -1,4 +1,4 @@
-name: Deploy TaskFlow
+name: Deploy TaskFlow Precision
 
 on:
   push:

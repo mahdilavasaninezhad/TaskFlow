@@ -1,17 +1,22 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties, FormEvent, ReactNode } from 'react';
 import {
   Activity,
   AlertTriangle,
   ArrowDownToLine,
-  BriefcaseBusiness,
   CalendarDays,
+  Command,
+  ArrowUpRight,
+  Check,
+  Clock3,
+  Layers3,
+  Rocket,
+  Zap,
   CheckCircle2,
   ChevronRight,
   CircleDashed,
   Copy,
   Filter,
-  FolderKanban,
   Gauge,
   GripVertical,
   Languages,
@@ -47,12 +52,14 @@ type TextKey =
   | 'priorityMix' | 'kanbanHint' | 'tableHint' | 'insightHint' | 'taskCreated' | 'taskUpdated' | 'taskMoved'
   | 'taskDeleted' | 'latestActivity' | 'noActivity' | 'createdAt' | 'updatedAt' | 'clear' | 'member'
   | 'allProjects' | 'switchProject' | 'projectBoard' | 'productivity' | 'progressLabel' | 'dropToMove' | 'totalPoints'
-  | 'taskCount' | 'activeSprint' | 'dueSoon' | 'commandCenter' | 'workspace';
+  | 'taskCount' | 'activeSprint' | 'dueSoon' | 'commandCenter' | 'workspace'
+  | 'views' | 'quickAccess' | 'jumpTo' | 'findAnything' | 'searchTasks' | 'noCommands' | 'teamMembers'
+  | 'deliveryOverview' | 'inMotion' | 'onTrack' | 'workInFocus' | 'keyboardHint' | 'allWork' | 'sprintSnapshot' | 'selectProject';
 
 const text: Record<Locale, Record<TextKey, string>> = {
   en: {
-    appName: 'TaskFlow',
-    appTag: 'Thoughtful work, beautifully organized',
+    appName: 'TaskFlow Pro',
+    appTag: 'Project operations command center',
     board: 'Board',
     list: 'List',
     insights: 'Insights',
@@ -143,11 +150,26 @@ const text: Record<Locale, Record<TextKey, string>> = {
     activeSprint: 'Active sprint',
     dueSoon: 'Due soon',
     commandCenter: 'Command center',
-    workspace: 'Workspace'
+    workspace: 'Workspace',
+    views: 'Views',
+    quickAccess: 'Quick access',
+    jumpTo: 'Jump to',
+    findAnything: 'Search tasks, views or projects...',
+    searchTasks: 'Find a task',
+    noCommands: 'Nothing matched your search',
+    teamMembers: 'Team members',
+    deliveryOverview: 'Delivery overview',
+    inMotion: 'In motion',
+    onTrack: 'On track',
+    workInFocus: 'Make space for meaningful work.',
+    keyboardHint: 'A faster way to navigate',
+    allWork: 'All work',
+    sprintSnapshot: 'Sprint snapshot',
+    selectProject: 'Select a project'
   },
   fa: {
-    appName: 'TaskFlow',
-    appTag: 'همه‌چیز، در جای درست خودش',
+    appName: 'تسک‌فلو پرو',
+    appTag: 'مرکز فرمان عملیات پروژه',
     board: 'برد',
     list: 'فهرست',
     insights: 'گزارش‌ها',
@@ -238,7 +260,22 @@ const text: Record<Locale, Record<TextKey, string>> = {
     activeSprint: 'اسپرینت فعال',
     dueSoon: 'نزدیک به موعد',
     commandCenter: 'مرکز فرمان',
-    workspace: 'ورک‌اسپیس'
+    workspace: 'ورک‌اسپیس',
+    views: 'نماها',
+    quickAccess: 'دسترسی سریع',
+    jumpTo: 'رفتن به',
+    findAnything: 'جست‌وجوی وظیفه، نما یا پروژه...',
+    searchTasks: 'پیدا کردن وظیفه',
+    noCommands: 'نتیجه‌ای برای جست‌وجوی شما پیدا نشد',
+    teamMembers: 'اعضای تیم',
+    deliveryOverview: 'نمای کلی تحویل',
+    inMotion: 'در جریان',
+    onTrack: 'در مسیر',
+    workInFocus: 'فضا را برای کارهای مهم باز کن.',
+    keyboardHint: 'مسیر سریع‌تر برای جابه‌جایی',
+    allWork: 'همه کارها',
+    sprintSnapshot: 'خلاصه اسپرینت',
+    selectProject: 'انتخاب پروژه'
   }
 };
 
@@ -293,7 +330,7 @@ function PriorityPill({ value, t }: { value: Priority; t: ReturnType<typeof useT
 }
 
 function MetricCard({ label, value, note, icon }: { label: string; value: string; note: string; icon: ReactNode }) {
-  return <article className="metric-card-v2"><div className="metric-heading"><span>{label}</span><span className="metric-icon-v2">{icon}</span></div><strong>{value}</strong><small>{note}</small></article>;
+  return <article className="metric-card-v2"><div className="metric-heading"><span>{label}</span><span className="metric-icon-v2">{icon}</span></div><div className="metric-value-row"><strong>{value}</strong><ArrowUpRight size={16} className="metric-arrow" /></div><small>{note}</small></article>;
 }
 
 function TaskMini({ task, locale, t, onEdit }: { task: Task; locale: Locale; t: ReturnType<typeof useText>; onEdit: (task: Task) => void }) {
@@ -314,7 +351,7 @@ function BoardCard({ task, locale, t, onEdit }: { task: Task; locale: Locale; t:
   };
   return <article ref={setNodeRef} style={style} className="board-card-modern">
     <div className="board-card-top">
-      <span className={`mini-badge mini-${task.category}`}>{t(task.category)}</span>
+      <span className="task-code">{task.id}</span>
       <button ref={setActivatorNodeRef} {...attributes} {...listeners} className="drag-button" aria-label={taskName(task, locale)}><GripVertical size={16} /></button>
     </div>
     <button className="task-main" onClick={() => onEdit(task)}>
@@ -322,8 +359,8 @@ function BoardCard({ task, locale, t, onEdit }: { task: Task; locale: Locale; t:
       <p>{taskDescription(task, locale)}</p>
     </button>
     <div className="board-card-bottom">
+      <span className={`mini-badge mini-${task.category}`}>{t(task.category)}</span>
       <PriorityPill value={task.priority} t={t} />
-      <span className="point-badge">{formatNumber(task.points, locale)} pt</span>
     </div>
     <div className="board-card-footer">
       <span className={`date-badge ${isOverdue(task) ? 'is-overdue' : ''}`}><CalendarDays size={14} />{dueLabel(task, locale, t)}</span>
@@ -332,15 +369,15 @@ function BoardCard({ task, locale, t, onEdit }: { task: Task; locale: Locale; t:
   </article>;
 }
 
-function BoardLane({ status, tasks, locale, t, onEdit, onCreate }: { status: Status; tasks: Task[]; locale: Locale; t: ReturnType<typeof useText>; onEdit: (task: Task) => void; onCreate: (status: Status) => void }) {
+function BoardLane({ status, tasks, locale, t, onEdit, onCreate }: { status: Status; tasks: Task[]; locale: Locale; t: ReturnType<typeof useText>; onEdit: (task: Task) => void; onCreate: () => void }) {
   const { setNodeRef, isOver } = useDroppable({ id: `lane:${status}` });
   return <section ref={setNodeRef} style={laneStyle(status)} className={`board-lane ${isOver ? 'is-over' : ''}`}>
     <header className="lane-header">
       <div>
-        <span className="lane-kicker">{t('projectBoard')}</span>
+        <span className="lane-kicker">{locale === 'fa' ? 'مرحله' : 'STAGE'} {formatNumber(statuses.indexOf(status) + 1, locale).padStart(2, locale === 'fa' ? '۰' : '0')}</span>
         <div className="lane-title-row"><span className="lane-dot" /><h3>{status === 'done' ? t('completed') : t(status)}</h3><span className="lane-count">{formatNumber(tasks.length, locale)}</span></div>
       </div>
-      <button className="lane-add" onClick={() => onCreate(status)} aria-label={t('newTask')}><Plus size={17} /></button>
+      <button className="lane-add" onClick={onCreate} aria-label={t('newTask')}><Plus size={17} /></button>
     </header>
     <div className="lane-body">
       {tasks.length ? tasks.map((task) => <BoardCard key={task.id} task={task} locale={locale} t={t} onEdit={onEdit} />) : <div className="lane-empty"><CircleDashed size={18} /><span>{t('dropToMove')}</span></div>}
@@ -353,7 +390,7 @@ function EmptyBlock({ t, onClear }: { t: ReturnType<typeof useText>; onClear: ()
 }
 
 function ProgressBar({ value }: { value: number }) {
-  return <span className="progress-track"><span className="progress-fill" style={{ width: `${Math.max(0, Math.min(100, value))}%` }} /></span>;
+  return <span className="progress-track"><span className="progress-fill" style={{ width: `${Math.max(6, value)}%` }} /></span>;
 }
 
 function TaskDialog({
@@ -365,8 +402,7 @@ function TaskDialog({
   onSave,
   onDelete,
   onDuplicate,
-  currentProject,
-  initialStatus
+  currentProject
 }: {
   open: boolean;
   task: Task | null;
@@ -377,7 +413,6 @@ function TaskDialog({
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
   currentProject: ProjectId;
-  initialStatus: Status;
 }) {
   const [form, setForm] = useState<TaskForm>({
     title: '',
@@ -411,7 +446,7 @@ function TaskDialog({
       setForm({
         title: '',
         description: '',
-        status: initialStatus,
+        status: 'backlog',
         priority: 'medium',
         category: 'development',
         assignee: members[0].id,
@@ -422,7 +457,7 @@ function TaskDialog({
       setDescriptionFa('');
     }
     setError('');
-  }, [task, open, currentProject, initialStatus]);
+  }, [task, open, currentProject]);
 
   if (!open) return null;
 
@@ -435,7 +470,7 @@ function TaskDialog({
     onSave(task, { ...form, points: Number(form.points) || 0 }, titleFa, descriptionFa);
   };
 
-  return <div className="dialog-shell" role="dialog" aria-modal="true">
+  return <div className="dialog-shell" role="dialog" aria-modal="true" aria-label={task ? t('editTask') : t('createTask')}>
     <div className="dialog-backdrop" onClick={onClose} />
     <form className="dialog-card" onSubmit={submit}>
       <div className="dialog-header">
@@ -498,8 +533,9 @@ export default function App() {
   const [selected, setSelected] = useState<Task | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [createStatus, setCreateStatus] = useState<Status>('backlog');
-  const searchRef = useRef<HTMLInputElement>(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteQuery, setPaletteQuery] = useState('');
+  const [paletteIndex, setPaletteIndex] = useState(0);
   const t = useText(locale);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } }));
 
@@ -508,21 +544,6 @@ export default function App() {
     document.documentElement.dir = locale === 'fa' ? 'rtl' : 'ltr';
     document.body.dataset.theme = theme;
   }, [locale, theme]);
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-        event.preventDefault();
-        searchRef.current?.focus();
-      }
-      if (event.key === 'Escape' && dialogOpen) {
-        setDialogOpen(false);
-        setSelected(null);
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [dialogOpen]);
 
   const projectTasks = useMemo(() => tasks.filter((task) => task.projectId === projectId), [projectId, tasks]);
 
@@ -551,8 +572,7 @@ export default function App() {
   const activeTask = tasks.find((task) => task.id === draggingId) || null;
   const activityFeed = activity.filter((item) => item.projectId === projectId).slice(0, 7);
 
-  const openNew = (status: Status = 'backlog') => {
-    setCreateStatus(status);
+  const openNew = () => {
     setSelected(null);
     setDialogOpen(true);
   };
@@ -610,6 +630,53 @@ export default function App() {
     setAssigneeFilter('all');
   };
 
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const editing = !!target?.closest('input, textarea, select, [contenteditable="true"]');
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        if (!dialogOpen) {
+          setPaletteQuery('');
+          setPaletteIndex(0);
+          setPaletteOpen((open) => !open);
+        }
+      } else if (event.key === 'Escape') {
+        setPaletteOpen(false);
+        if (dialogOpen) closeDialog();
+      } else if (!editing && !paletteOpen && !dialogOpen && event.key.toLowerCase() === 'n') {
+        event.preventDefault();
+        openNew();
+      }
+    };
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, [dialogOpen, paletteOpen]);
+
+  const openPalette = () => {
+    setPaletteQuery('');
+    setPaletteIndex(0);
+    setPaletteOpen(true);
+  };
+
+  const closePalette = () => {
+    setPaletteQuery('');
+    setPaletteIndex(0);
+    setPaletteOpen(false);
+  };
+
+  const quickActions: { id: string; label: string; detail: string; icon: ReactNode; run: () => void }[] = [
+    { id: 'new', label: t('newTask'), detail: t('createTask'), icon: <Plus size={18} />, run: openNew },
+    ...([{ key: 'board', icon: <LayoutGrid size={18} /> }, { key: 'list', icon: <ListChecks size={18} /> }, { key: 'insights', icon: <Activity size={18} /> }] as { key: View; icon: ReactNode }[]).map(({ key, icon }) => ({ id: key, label: t(key), detail: t('views'), icon, run: () => setView(key) })),
+    ...projects.map((project) => ({ id: project.id, label: locale === 'fa' ? project.nameFa : project.name, detail: t('selectProject'), icon: <Layers3 size={18} />, run: () => setProjectId(project.id) })),
+    ...projectTasks.slice(0, 20).map((task) => ({ id: task.id, label: taskName(task, locale), detail: task.id, icon: <CircleDashed size={18} />, run: () => openEdit(task) }))
+  ];
+  const visibleCommands = quickActions.filter((action) => `${action.label} ${action.detail}`.toLocaleLowerCase().includes(paletteQuery.trim().toLocaleLowerCase())).slice(0, 11);
+  const executeCommand = (run: () => void) => {
+    closePalette();
+    run();
+  };
+
   const onDragStart = ({ active }: DragStartEvent) => setDraggingId(String(active.id));
   const onDragEnd = ({ active, over }: DragEndEvent) => {
     setDraggingId(null);
@@ -622,7 +689,7 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = 'taskflow-data.json';
+    anchor.download = 'taskflow-pro-data.json';
     anchor.click();
     URL.revokeObjectURL(url);
   };
@@ -633,7 +700,7 @@ export default function App() {
       <div className="board-shell-modern">
         {statuses.map((status) => <BoardLane key={status} status={status} tasks={filtered.filter((task) => task.status === status)} locale={locale} t={t} onEdit={openEdit} onCreate={openNew} />)}
       </div>
-      <DragOverlay dropAnimation={null}>{activeTask ? <div className="drag-preview-modern"><div className="board-card-modern"><span className="mini-badge">{t(activeTask.category)}</span><strong className="preview-title">{taskName(activeTask, locale)}</strong><PriorityPill value={activeTask.priority} t={t} /></div></div> : null}</DragOverlay>
+      <DragOverlay dropAnimation={null}>{activeTask ? <div className="drag-preview-modern"><BoardCard task={activeTask} locale={locale} t={t} onEdit={openEdit} /></div> : null}</DragOverlay>
     </DndContext>;
   };
 
@@ -665,6 +732,10 @@ export default function App() {
   };
 
   const renderInsights = () => <div className="insight-grid">
+    <section className="insights-feature">
+      <div className="insights-feature-copy"><span className="eyebrow light-eyebrow"><span className="pulse-led" />{t('deliveryOverview')}</span><h2>{t('projectPulse')}</h2><p>{t('insightHint')}</p><div className="insights-feature-foot"><span><CheckCircle2 size={16} />{formatNumber(projectTasks.filter((task) => task.status === 'done').length, locale)} {t('done')}</span><span><Clock3 size={16} />{formatNumber(openCount, locale)} {t('open')}</span></div></div>
+      <div className="insights-feature-ring" style={{ ['--progress' as string]: `${completion}%` }}><div><strong>{formatNumber(completion, locale)}%</strong><small>{t('completionRate')}</small></div></div>
+    </section>
     <section className="panel-card wide-panel">
       <div className="panel-head"><div><span className="panel-kicker">{t('overview')}</span><h3>{t('projectPulse')}</h3></div><Sparkles size={18} /></div>
       <div className="priority-stack">{statuses.map((status) => {
@@ -690,81 +761,69 @@ export default function App() {
   return <div className="tf-shell">
     <aside className="side-rail">
       <div className="brand-card">
-        <div className="brand-mark"><FolderKanban size={19} strokeWidth={2.2} /></div>
-        <div>
-          <strong>{t('appName')}</strong>
-          <span>{t('appTag')}</span>
-        </div>
+        <div className="brand-mark"><Zap size={20} fill="currentColor" strokeWidth={1.5} /></div>
+        <div className="brand-copy"><strong>taskflow<span className="brand-period">.</span></strong><span>{locale === 'fa' ? 'فضای کاری دقیق‌تر' : 'THE WORKSPACE, REFINED'}</span></div>
+        <span className="brand-edition">05</span>
       </div>
-      <section className="rail-section">
-        <div className="section-title"><span>{t('switchProject')}</span><ChevronRight size={15} /></div>
+      <div className="rail-topline"><span className="online-dot" />{t('workspace')} <span className="rail-topline-meta">/ 01</span></div>
+      <section className="rail-section rail-navigation">
+        <div className="section-title"><span>{t('views')}</span><span className="section-meta">01 / 03</span></div>
+        <div className="navigation-list">
+          {([{ key: 'board', icon: <LayoutGrid size={18} /> }, { key: 'list', icon: <ListChecks size={18} /> }, { key: 'insights', icon: <Activity size={18} /> }] as { key: View; icon: ReactNode }[]).map(({ key, icon }, index) => <button key={key} className={`nav-item ${view === key ? 'is-active' : ''}`} onClick={() => setView(key)}><span className="nav-icon">{icon}</span><span>{t(key)}</span><span className="nav-index">0{index + 1}</span></button>)}
+        </div>
+      </section>
+      <section className="rail-section rail-projects">
+        <div className="section-title"><span>{t('switchProject')}</span><span className="section-meta">{formatNumber(projects.length, locale)}</span></div>
         <div className="project-list">{projects.map((item) => <button key={item.id} className={`project-tile ${projectId === item.id ? 'is-active' : ''}`} onClick={() => setProjectId(item.id)}>
-          <span className="project-icon" style={{ background: item.color }}>{item.icon}</span>
+          <span className="project-icon" style={{ ['--project-color' as string]: item.color }}>{item.icon}</span>
           <div><strong>{locale === 'fa' ? item.nameFa : item.name}</strong><span>{locale === 'fa' ? item.subtitleFa : item.subtitle}</span></div>
+          {projectId === item.id ? <Check size={15} className="project-check" /> : null}
         </button>)}</div>
       </section>
-      <section className="rail-section rail-insights">
-        <div className="section-title"><span>{t('workspaceHealth')}</span><Activity size={15} /></div>
-        <div className="rail-progress-panel">
-          <div className="rail-progress-top"><span>{t('completionRate')}</span><strong>{formatNumber(completion, locale)}%</strong></div>
-          <ProgressBar value={completion} />
-          <p>{formatNumber(projectTasks.filter((task) => task.status === 'done').length, locale)} / {formatNumber(projectTasks.length, locale)} {t('tasks')}</p>
-          <div className="rail-progress-foot"><span>{t('open')} <strong>{formatNumber(openCount, locale)}</strong></span><span>{t('overdue')} <strong>{formatNumber(overdueCount, locale)}</strong></span></div>
-        </div>
+      <button className="command-invite" onClick={openPalette}><span className="command-invite-icon"><Command size={18} /></span><span><strong>{t('quickAccess')}</strong><small>{t('keyboardHint')}</small></span><kbd>Ctrl K</kbd></button>
+      <section className="rail-section rail-deadlines">
+        <div className="section-title"><span>{t('upcoming')}</span><CalendarDays size={16} /></div>
+        <div className="deadline-list">{dueSoon.length ? dueSoon.slice(0, 3).map((task) => <TaskMini key={task.id} task={task} locale={locale} t={t} onEdit={openEdit} />) : <div className="deadline-empty">{t('noActivity')}</div>}</div>
       </section>
-      <section className="rail-section">
-        <div className="section-title"><span>{t('upcoming')}</span><CalendarDays size={15} /></div>
-        <div className="deadline-list">{dueSoon.length ? dueSoon.map((task) => <TaskMini key={task.id} task={task} locale={locale} t={t} onEdit={openEdit} />) : <div className="deadline-empty">{t('noActivity')}</div>}</div>
-      </section>
+      <div className="sidebar-footer"><div className="footer-avatar-stack">{members.slice(0, 4).map((member) => <ModernAvatar id={member.id} key={member.id} />)}</div><div><strong>{t('teamMembers')}</strong><span>{formatNumber(members.length, locale)} {t('member')}</span></div><span className="footer-arrow"><ArrowUpRight size={17} /></span></div>
     </aside>
 
     <main className="main-stage">
+      <div className="utility-header"><div className="breadcrumbs"><span>{t('workspace')}</span><ChevronRight size={15} /><strong>{projectName(projectId, locale)}</strong><span className="breadcrumb-suffix">/ {t(view)}</span></div><div className="utility-actions"><span className="utility-live"><span className="online-dot" />{t('onTrack')}</span><button className="utility-search" onClick={openPalette}><Search size={17} /><span>{t('quickAccess')}</span><kbd>Ctrl K</kbd></button></div></div>
+
       <header className="hero-panel">
         <div className="hero-copy">
-          <span className="hero-kicker">{t('activeSprint')}</span>
-          <h1>{projectName(projectId, locale)}</h1>
+          <span className="hero-kicker"><span className="hero-kicker-line" />{t('activeSprint')} <span className="hero-kicker-sep">/</span> {t('projectBoard')}</span>
+          <h1>{projectName(projectId, locale)}<span className="hero-title-period">.</span></h1>
           <p>{projectSubtitle(projectId, locale)}</p>
+          <div className="hero-meta"><span><span className="online-dot" />{t('inMotion')}</span><span className="hero-meta-divider" /><span><Clock3 size={15} />{t('sprintSnapshot')}</span><span className="hero-meta-divider" /><span><UserRound size={15} />{formatNumber(members.length, locale)} {t('teamMembers')}</span></div>
         </div>
-        <div className="hero-actions">
-          <button className="soft-icon" onClick={() => setLocale(locale === 'en' ? 'fa' : 'en')}><Languages size={17} /><span>{locale === 'en' ? 'FA' : 'EN'}</span></button>
-          <button className="soft-icon" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}><span>{theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}</span><span>{theme === 'light' ? t('dark') : t('light')}</span></button>
-          <button className="soft-icon" onClick={exportJson}><ArrowDownToLine size={17} /><span>{t('export')}</span></button>
-          <button className="primary-button" onClick={() => openNew()}><Plus size={18} />{t('newTask')}</button>
-        </div>
+        <div className="hero-actions"><div className="hero-action-utilities">
+          <button className="soft-icon" onClick={() => setLocale(locale === 'en' ? 'fa' : 'en')} aria-label={t('language')} title={t('language')}><Languages size={18} /><span>{locale === 'en' ? 'FA' : 'EN'}</span></button>
+          <button className="soft-icon" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} aria-label={t('theme')} title={t('theme')}>{theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}</button>
+          <button className="soft-icon" onClick={exportJson} aria-label={t('export')} title={t('export')}><ArrowDownToLine size={18} /></button>
+        </div><button className="primary-button" onClick={openNew}><Plus size={18} />{t('newTask')}<span className="new-task-shortcut">N</span></button></div>
       </header>
 
-      <section className="surface-card top-summary">
-        <div className="summary-metrics">
-          <MetricCard label={t('tasks')} value={formatNumber(projectTasks.length, locale)} note={t('projectPulse')} icon={<BriefcaseBusiness size={18} />} />
-          <MetricCard label={t('totalPoints')} value={formatNumber(totalPoints, locale)} note={t('throughput')} icon={<Target size={18} />} />
-          <MetricCard label={t('done')} value={formatNumber(projectTasks.filter((task) => task.status === 'done').length, locale)} note={t('completionRate')} icon={<CheckCircle2 size={18} />} />
-          <MetricCard label={t('overdue')} value={formatNumber(overdueCount, locale)} note={t('workspaceHealth')} icon={<AlertTriangle size={18} />} />
-        </div>
+      <section className="focus-strip"><div className="focus-strip-intro"><span className="eyebrow"><span className="pulse-led" />{t('deliveryOverview')}</span><h2>{t('workInFocus')}</h2><p>{t('overview')} <span>/</span> {t('sprintSnapshot')}</p></div><div className="focus-meter"><div className="focus-meter-top"><strong>{formatNumber(completion, locale)}%</strong><span>{t('completionRate')}</span></div><ProgressBar value={completion} /><div className="focus-meter-foot"><span>{formatNumber(projectTasks.filter((task) => task.status === 'done').length, locale)} {t('done')}</span><span>{formatNumber(projectTasks.length, locale)} {t('tasks')}</span></div></div><div className="focus-stamp"><Rocket size={24} /><span>{t('inMotion')}</span><small>{formatNumber(totalPoints, locale)} {t('totalPoints')}</small></div></section>
+
+      <section className="surface-card top-summary"><div className="summary-metrics">
+        <MetricCard label={t('allWork')} value={formatNumber(projectTasks.length, locale)} note={t('projectPulse')} icon={<Layers3 size={18} />} />
+        <MetricCard label={t('inMotion')} value={formatNumber(projectTasks.filter((task) => task.status === 'progress' || task.status === 'review').length, locale)} note={t('projectBoard')} icon={<Activity size={18} />} />
+        <MetricCard label={t('done')} value={formatNumber(projectTasks.filter((task) => task.status === 'done').length, locale)} note={t('completionRate')} icon={<CheckCircle2 size={18} />} />
+        <MetricCard label={t('overdue')} value={formatNumber(overdueCount, locale)} note={t('workspaceHealth')} icon={<AlertTriangle size={18} />} />
+      </div></section>
+
+      <section className="toolbar-surface"><div className="toolbar-header"><div><span className="eyebrow">{t('allWork')} / {t('projectBoard')}</span><h2>{t(view)} <span className="toolbar-count">{formatNumber(filtered.length, locale)}</span></h2></div><div className="toolbar-header-actions"><div className="view-tabs">{([{ key: 'board', icon: <LayoutGrid size={16} /> }, { key: 'list', icon: <ListChecks size={16} /> }, { key: 'insights', icon: <Activity size={16} /> }] as { key: View; icon: ReactNode }[]).map(({ key, icon }) => <button key={key} className={`view-tab ${view === key ? 'is-active' : ''}`} onClick={() => setView(key)} aria-pressed={view === key}>{icon}<span>{t(key)}</span></button>)}</div></div></div>
+        <div className="toolbar-row"><div className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('searchPlaceholder')} aria-label={t('search')} />{query && <button onClick={() => setQuery('')} aria-label={t('clear')}><X size={15} /></button>}</div><div className="toolbar-selects"><select aria-label={t('priority')} value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value as 'all' | Priority)}><option value="all">{t('allPriorities')}</option>{priorities.map((priority) => <option key={priority} value={priority}>{t(priority)}</option>)}</select><select aria-label={t('category')} value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value as 'all' | Category)}><option value="all">{t('allCategories')}</option>{categories.map((category) => <option key={category} value={category}>{t(category)}</option>)}</select><select aria-label={t('owner')} value={assigneeFilter} onChange={(event) => setAssigneeFilter(event.target.value)}><option value="all">{t('allAssignees')}</option>{members.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}</select><button className="filter-clear" onClick={clearFilters} aria-label={t('resetFilters')} title={t('resetFilters')}><Filter size={16} /><span>{t('clear')}</span></button></div></div>
+        {(query || priorityFilter !== 'all' || categoryFilter !== 'all' || assigneeFilter !== 'all') && <div className="active-filter-bar"><span className="filter-indicator" />{t('filters')}: {formatNumber(filtered.length, locale)} {t('tasks')}<button onClick={clearFilters}>{t('resetFilters')}<X size={13} /></button></div>}
       </section>
 
-      <section className="toolbar-surface">
-        <div className="toolbar-row">
-          <div className="search-box"><Search size={18} /><input ref={searchRef} value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('searchPlaceholder')} /></div>
-          <div className="toolbar-selects">
-            <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value as 'all' | Priority)}><option value="all">{t('allPriorities')}</option>{priorities.map((value) => <option key={value} value={value}>{t(value)}</option>)}</select>
-            <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value as 'all' | Category)}><option value="all">{t('allCategories')}</option>{categories.map((value) => <option key={value} value={value}>{t(value)}</option>)}</select>
-            <select value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)}><option value="all">{t('allAssignees')}</option>{members.map((value) => <option key={value.id} value={value.id}>{value.name}</option>)}</select>
-            <button className="ghost-button" onClick={clearFilters}><Filter size={16} />{t('clear')}</button>
-          </div>
-        </div>
-        <div className="toolbar-row toolbar-views">
-          <div className="view-tabs">
-            {[{ key: 'board', icon: <LayoutGrid size={16} /> }, { key: 'list', icon: <ListChecks size={16} /> }, { key: 'insights', icon: <Activity size={16} /> }].map((item) => <button key={item.key} className={`view-tab ${view === item.key ? 'is-active' : ''}`} onClick={() => setView(item.key as View)}>{item.icon}<span>{t(item.key as 'board' | 'list' | 'insights')}</span></button>)}
-          </div>
-          <p className="view-hint">{view === 'board' ? t('kanbanHint') : view === 'list' ? t('tableHint') : t('insightHint')}</p>
-        </div>
-      </section>
-
-      <section className="workspace-canvas">
-        {view === 'board' ? renderBoard() : view === 'list' ? renderList() : renderInsights()}
-      </section>
+      <section className="workspace-canvas">{view === 'board' ? renderBoard() : view === 'list' ? renderList() : renderInsights()}</section>
+      <div className="workspace-bottom-note"><span>TF<span className="brand-period">.</span> — {locale === 'fa' ? 'ساخته‌شده برای تمرکز بیشتر' : 'DESIGNED FOR FOCUS'}</span><span>{t('project')} / {projectName(projectId, locale)}</span></div>
     </main>
 
-    <TaskDialog open={dialogOpen} task={selected} locale={locale} t={t} onClose={closeDialog} onSave={handleSave} onDelete={handleDelete} onDuplicate={handleDuplicate} currentProject={projectId} initialStatus={createStatus} />
+    <TaskDialog open={dialogOpen} task={selected} locale={locale} t={t} onClose={closeDialog} onSave={handleSave} onDelete={handleDelete} onDuplicate={handleDuplicate} currentProject={projectId} />
+    {paletteOpen && <div className="command-shell" role="dialog" aria-modal="true" aria-label={t('quickAccess')}><button className="command-backdrop" onClick={closePalette} aria-label={t('cancel')} /><div className="command-panel"><div className="command-search"><Search size={22} /><input autoFocus value={paletteQuery} onChange={(event) => { setPaletteQuery(event.target.value); setPaletteIndex(0); }} onKeyDown={(event) => { if (event.key === 'ArrowDown') { event.preventDefault(); setPaletteIndex((index) => Math.min(index + 1, Math.max(0, visibleCommands.length - 1))); } else if (event.key === 'ArrowUp') { event.preventDefault(); setPaletteIndex((index) => Math.max(0, index - 1)); } else if (event.key === 'Enter' && visibleCommands[paletteIndex]) { event.preventDefault(); executeCommand(visibleCommands[paletteIndex].run); } }} placeholder={t('findAnything')} aria-label={t('search')} /><kbd>ESC</kbd></div><div className="command-results"><div className="command-label">{t('jumpTo')} <span>{formatNumber(visibleCommands.length, locale)}</span></div>{visibleCommands.length ? visibleCommands.map((item, index) => <button key={item.id} className={`command-option ${index === paletteIndex ? 'is-highlighted' : ''}`}  onClick={() => executeCommand(item.run)}><span className="command-option-icon">{item.icon}</span><span><strong>{item.label}</strong><small>{item.detail}</small></span><ArrowUpRight size={16} className="command-option-arrow" /></button>) : <div className="command-empty">{t('noCommands')}</div>}</div><div className="command-footer"><span><kbd>↵</kbd> {t('jumpTo')}</span><span><kbd>ESC</kbd> {t('cancel')}</span><span>taskflow<span className="brand-period">.</span></span></div></div></div>}
   </div>;
 }
